@@ -307,7 +307,7 @@ function placePin(lat,lon,fit){
   if(fit) map.setView([lat,lon],Math.max(map.getZoom(),17));
 }
 /* 地図の操作は、まだ終わっていない住所検索より優先する（あとから終わった検索が地図の結果を上書きしない） */
-function cancelSearch(){ searchSeq++; $('go').disabled=false; setMsg(''); }
+function cancelSearch(){ searchSeq++; $('go').disabled=false; setMsg(''); $('cands').innerHTML=''; }
 map.on('click',e=>{ cancelSearch(); placePin(e.latlng.lat,e.latlng.lng,false); judge(e.latlng.lat,e.latlng.lng,null,'exact'); });
 map.on('moveend',async()=>{
   if(map.getZoom()<13) return;
