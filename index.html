@@ -87,7 +87,7 @@ footer{font-size:11px;color:var(--sub);padding:0 16px 30px;max-width:1100px;marg
   </section>
 </main>
 <footer>
-  出典：国土数値情報「都市計画決定情報」令和6年度版（国土交通省・CC BY 4.0）／住所の位置・市区町村の判別：国土地理院 住所検索API・逆ジオコーダ／地図：国土地理院タイル。
+  出典：防火・準防火地域と用途地域は東京都オープンデータ「都市計画決定情報GISデータ」（東京都都市整備局・令和7年3月31日時点・CC BY）、高度地区・風致地区・地区計画は国土数値情報「都市計画決定情報」令和6年度版（国土交通省・CC BY 4.0）／住所の位置・市区町村の判別：国土地理院 住所検索API・逆ジオコーダ／地図：国土地理院タイル。
   本ツールの結果は参考情報です。契約・確認申請の前には、必ず市区町村の都市計画窓口または都市計画図で最終確認してください。
 </footer>
 
@@ -98,6 +98,8 @@ footer{font-size:11px;color:var(--sub);padding:0 16px 30px;max-width:1100px;marg
 const FIRE_LABEL = {24:'防火地域', 25:'準防火地域'};
 const YOUTO_COLOR = {1:'#2e7d32',2:'#43a047',3:'#7cb342',4:'#9ccc65',5:'#fdd835',6:'#fbc02d',7:'#ffa000',8:'#f48fb1',9:'#e53935',10:'#ab47bc',11:'#7e57c2',12:'#5c6bc0'};
 const TOKYO_CENTER = [35.68, 139.7];
+/* 防火・準防火地域と用途地域＝東京都オープンデータ（令和7年3月31日時点）、高度地区・風致地区・地区計画＝国土数値情報（令和6年度版） */
+const DATA_DIR = 'data_r7';
 /* 建築基準法第22条区域：「防火地域又は準防火地域の指定のある区域を除く区域」と告示で確認できた市区町村（市区町村コード）
    都告示第354号：昭島・青梅・小金井・東村山・国立・福生・狛江・東大和・清瀬・東久留米・武蔵村山・多摩・稲城・羽村・あきる野・瑞穂・日の出
    市区の公式ページで確認：八王子・日野・練馬 */
@@ -115,7 +117,7 @@ const loaded = new Set();
 
 async function loadIndex(){
   if(INDEX) return INDEX;
-  const r = await fetch('data/index.json'); INDEX = await r.json();
+  const r = await fetch(DATA_DIR+'/index.json'); INDEX = await r.json();
   INDEX.forEach(c=>INDEX_NAME[c.code]=c.name);
   return INDEX;
 }
@@ -129,7 +131,7 @@ function prep(items){
 }
 function loadCity(code){
   if(!cityPromise[code]){
-    cityPromise[code] = fetch(`data/${code}.json`).then(r=>{
+    cityPromise[code] = fetch(`${DATA_DIR}/${code}.json`).then(r=>{
       if(!r.ok) throw new Error('データ読み込み失敗 '+code);
       return r.json();
     }).then(d=>{
@@ -423,14 +425,14 @@ async function judge(lat,lon,title,prec,extra){
   else if(fire===25) h+=`<h3>営業での目安（準防火地域）</h3><ul><li>延焼のおそれのある部分（隣地境界線・道路中心線から、1階は3m以下、2階以上は5m以下）の窓・玄関ドアなどは、防火設備（認定品）が必要になります。</li><li>延焼のおそれのある部分の外壁・軒裏は、防火構造などの性能が必要です。規模によって準耐火建築物等・耐火建築物等が必要になります。</li><li>増築は10㎡以内でも確認申請が必要です。</li></ul>`;
   else h+=`<h3>営業での目安</h3><ul><li>防火・準防火地域ではありません。上の22条区域の表示を併せて確認してください。</li></ul>`;
   h += `<h3>建蔽率・容積率について</h3><ul><li>表示は都市計画で指定された数値です。角地、防火地域内の耐火建築物等、準防火地域内の準耐火建築物等などで、建蔽率が緩和されることがあります。</li><li>容積率は、前面道路の幅が12m未満だと低くなる場合があります。</li></ul>
-    <h3>最終確認</h3><ul><li>市区町村の都市計画窓口、または都市計画図で確認してください。データの基準は国土数値情報（令和6年度版）で、最新の都市計画変更が反映されていない場合があります。</li></ul></div>
+    <h3>最終確認</h3><ul><li>市区町村の都市計画窓口、または都市計画図で確認してください。データの基準は東京都の令和7年3月31日時点です。それ以降の都市計画変更は反映されていない場合があります。</li></ul></div>
     <div class="row2"><button class="sub" id="copy">営業メモをコピー</button></div>`;
   $('result').innerHTML = h;
 
   const memo = [`【${title||heading}】`,`位置：${lat.toFixed(6)}, ${lon.toFixed(6)}（https://maps.gsi.go.jp/#17/${lat.toFixed(6)}/${lon.toFixed(6)}/）`,`防火地域の区分：${label}${unsure}`,
     youto.length?`用途地域：${youto[0].p.n}／建蔽率${youto[0].p.bcr}%／容積率${youto[0].p.far}%`:'用途地域：指定なし',
     heights.length?`高度地区：指定あり`:'',
-    ...I.map(w=>`※${w[0].replace(/<[^>]*>/g,'')}`), ...W.map(w=>`※${w[0].replace(/<[^>]*>/g,'')}`),'（国土数値情報 都市計画決定情報 令和6年度版・参考情報）'].filter(Boolean).join('\n');
+    ...I.map(w=>`※${w[0].replace(/<[^>]*>/g,'')}`), ...W.map(w=>`※${w[0].replace(/<[^>]*>/g,'')}`),'（東京都 都市計画決定情報GIS 令和7年3月31日時点・参考情報）'].filter(Boolean).join('\n');
   $('copy').onclick=async()=>{ try{ await navigator.clipboard.writeText(memo); $('copy').textContent='コピーしました'; }catch(e){ $('copy').textContent='コピーできませんでした'; } };
 }
 
