@@ -208,10 +208,17 @@ function nearestChange(layer, lon, lat, R, keyAt){
       continue;
     }
     const ux=e.cx/e.d, uy=e.cy/e.d;
-    const other = keyAt(lon+(e.cx+ux*3)/e.kx, lat+(e.cy+uy*3)/e.ky);   // 境界の3m向こう
-    if(other!==me) return {dist:e.d, other};
+    const qlon=lon+(e.cx+ux*3)/e.kx, qlat=lat+(e.cy+uy*3)/e.ky;
+    const other = keyAt(qlon,qlat);   // 境界の3m向こう
+    if(other!==me) return {dist:e.d, other, qlon, qlat};
   }
   return null;
+}
+/* 境界の向こう側が「指定なし」のとき、そこが都外（隣県）ではないかを確かめる */
+async function acrossIsOutside(chg){
+  if(!chg || chg.qlon===undefined) return false;
+  const rg = await reverseGeo(chg.qlat, chg.qlon);
+  return !!(rg && !String(rg.muniCd).startsWith('13'));
 }
 
 /* ========== 住所 → 位置 ========== */
@@ -229,12 +236,14 @@ async function geocode(q){
 }
 /* 緯度経度 → 市区町村コード（都外・都内の判別、市区町村名） */
 async function reverseGeo(lat,lon){
+  const ctl = new AbortController(), timer = setTimeout(()=>ctl.abort(), 8000);   // 応答がなくても「判定中」で止まらない
   try{
-    const r = await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lon=${lon}&lat=${lat}`);
+    const r = await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lon=${lon}&lat=${lat}`,{signal:ctl.signal});
     if(!r.ok) return null;
     const j = await r.json();
-    return j.results || null;
+    return (j.results && j.results.muniCd) ? j.results : null;   // 市区町村コードが無い（海上・埋立地など）は null 扱い
   }catch(e){ return null; }
+  finally{ clearTimeout(timer); }
 }
 const KANJI = {'〇':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
 function kanjiNum(s){
@@ -293,11 +302,13 @@ function drawOverlays(){
 function placePin(lat,lon,fit){
   if(!marker){
     marker=L.marker([lat,lon],{draggable:true,icon:pinIcon}).addTo(map);
-    marker.on('dragend',()=>{ const p=marker.getLatLng(); judge(p.lat,p.lng,null,'exact'); });
+    marker.on('dragend',()=>{ cancelSearch(); const p=marker.getLatLng(); judge(p.lat,p.lng,null,'exact'); });
   } else marker.setLatLng([lat,lon]);
   if(fit) map.setView([lat,lon],Math.max(map.getZoom(),17));
 }
-map.on('click',e=>{ placePin(e.latlng.lat,e.latlng.lng,false); judge(e.latlng.lat,e.latlng.lng,null,'exact'); });
+/* 地図の操作は、まだ終わっていない住所検索より優先する（あとから終わった検索が地図の結果を上書きしない） */
+function cancelSearch(){ searchSeq++; $('go').disabled=false; setMsg(''); }
+map.on('click',e=>{ cancelSearch(); placePin(e.latlng.lat,e.latlng.lng,false); judge(e.latlng.lat,e.latlng.lng,null,'exact'); });
 map.on('moveend',async()=>{
   if(map.getZoom()<13) return;
   const c=map.getCenter(); try{ await ensureCitiesFor(c.lat,c.lng); drawOverlays(); }catch(e){}
@@ -349,17 +360,25 @@ async function judge(lat,lon,title,prec,extra){
   const youto = youtoAt(lon,lat);
   const heights = featuresAt('height',lon,lat).map(f=>f.p);
   const fuuchi = featuresAt('fuuchi',lon,lat).map(f=>f.p.n||'風致地区');
-  const chiku = featuresAt('chiku',lon,lat).map(f=>f.p.n);
+  const chiku = featuresAt('chiku',lon,lat).map(f=>(f.p.n||'').trim());
   const fireChg = nearestChange('fire',lon,lat,30,(x,y)=>fireAt(x,y)||0);
   const youtoChg = nearestChange('youto',lon,lat,30,(x,y)=>{const a=youtoAt(x,y);return a.length?youtoKey(a[0]):'-';});
+  const fireOut = fireChg && !fireChg.other ? await acrossIsOutside(fireChg) : false;      // 境界の向こうが都外か
+  const youtoOut = youtoChg && youtoChg.other==='-' ? await acrossIsOutside(youtoChg) : false;
+  if(my!==reqSeq) return;
+  /* 住所の市区名と、位置から判別した市区が違う（市区境の近く）→両方の市区で規制を調べる */
+  const titleCity = title ? (Object.entries(INDEX_NAME).sort((a,b)=>b[1].length-a[1].length).find(([c,n])=>title.replace(/^東京都/,'').startsWith(n))||[])[0] : null;
+  const cityMismatch = !!(titleCity && code && titleCity!==code);
+  const codes = cityMismatch ? [code,titleCity] : [code];
 
   const cls = fire===24?'fire':fire===25?'quasi':'none';
   let label = fire?FIRE_LABEL[fire]:'防火・準防火の指定なし';
-  if(!fire && youto.length){
-    label += ART22_CONFIRMED.has(code) ? '（22条区域）' : '';
-  }
+  if(!fire && codes.some(c=>ART22_CONFIRMED.has(c))) label += '（22条区域）';
+  const unsure = prec==='low' ? '（町名の代表点・参考）'
+    : (prec==='block'&&(extra.dropped||/[0-9０-９]番地$/.test(title||''))) ? '（位置が不確か・参考）'
+    : !rg ? '（都内か確認できず・参考）' : '';
   let h = `<p class="addr">${esc(heading)}</p>
-    <div class="badge ${cls}"><span class="k">防火地域の区分${prec==='low'?'（町名の代表点・参考）':(prec==='block'&&(extra.dropped||/[0-9０-９]番地$/.test(title||'')))?'（位置が不確か・参考）':''}</span><span class="v">${esc(label)}</span></div>`;
+    <div class="badge ${cls}"><span class="k">防火地域の区分${unsure}</span><span class="v">${esc(label)}</span></div>`;
 
   /* 用途地域 */
   if(youto.length){
@@ -383,31 +402,32 @@ async function judge(lat,lon,title,prec,extra){
   if(prec==='block' && extra.dropped) W.push(['番地の一部まで位置を特定できませんでした','入力された番地の末尾（枝番・号など）が検索に反映されず、街区（番地）の代表点で判定しています。敷地が街区の端にある場合は結果が変わることがあります。地図のピンを敷地に合わせると確実です。']);
   if(prec==='block' && /[0-9０-９]番地$/.test(title||'')) W.push(['地番の地域です。位置が大きくずれることがあります','地番の地域では、検索の位置が実際の建物から数十〜200m以上ずれる場合があります。必ず地図で位置を確認し、ピンを敷地に合わせてください。']);
   if(extra.accuracy && extra.accuracy>30) W.push([`現在地の誤差が約${Math.round(extra.accuracy)}mあります`,'地図のピンを敷地に合わせてから判定結果を見てください。']);
-  if(fireChg){ const o=fireChg.other?FIRE_LABEL[fireChg.other]:'指定なし';
+  if(cityMismatch) W.push(['住所の市区名と、位置から判別した市区が異なります',`住所は「${esc(INDEX_NAME[titleCity])}」ですが、検索された位置は「${esc(INDEX_NAME[code])}」側です。市区の境界の近くのため、位置がずれている可能性があります。ピンを敷地に合わせてください（規制は両方の市区で調べています）。`]);
+  if(fireChg){ const o=fireChg.other?FIRE_LABEL[fireChg.other]:(fireOut?'東京都外':'指定なし');
     W.push([`防火地域の境界が約${Math.round(fireChg.dist)}m先にあります`,`境界の向こう側は「${o}」です。建築物が地域にまたがる場合、原則として建築物の全部に厳しい側の規制が及びます（建築基準法第65条）。敷地の範囲を必ず確認してください。`]); }
   if(youtoChg){ const [n,b,f]=String(youtoChg.other).split('|');
-    W.push([`用途地域の境界が約${Math.round(youtoChg.dist)}m先にあります`, youtoChg.other==='-' ? '境界の向こう側は用途地域の指定なしです。' : `境界の向こう側は「${esc(n)}（建蔽率${esc(b)}%／容積率${esc(f)}%）」です。敷地がまたがる場合、建蔽率・容積率は面積按分になります。`]); }
+    W.push([`用途地域の境界が約${Math.round(youtoChg.dist)}m先にあります`, youtoChg.other==='-' ? (youtoOut?'境界の向こう側は東京都外です。':'境界の向こう側は用途地域の指定なしです。') : `境界の向こう側は「${esc(n)}（建蔽率${esc(b)}%／容積率${esc(f)}%）」です。敷地がまたがる場合、建蔽率・容積率は面積按分になります。`]); }
   if(chiku.length) W.push(['地区計画の区域内です', `${chiku[0]?'「'+esc(chiku[0])+'」：':''}用途・高さ・壁面の位置などに、用途地域とは別の制限がかかる場合があります。市区の地区計画図で確認してください。`]);
 
-  /* 22条区域・新たな防火規制 */
-  if(!fire && youto.length){
-    if(ART22_CONFIRMED.has(code)) I.push(['法第22条区域に該当します（告示で確認済み）',`${esc(cityName)}の告示は「防火地域又は準防火地域の指定のある区域を除く区域」を屋根の構造制限区域としています。屋根は不燃材料等でつくる必要があり、木造などの外壁は延焼のおそれのある部分を準防火性能にします（法第22条・第23条）。窓・玄関ドアなどの開口部に防火設備は、この区域では求められません。`]);
+  /* 22条区域・新たな防火規制（告示は「市区の区域のうち防火・準防火を除く区域」なので、用途地域がない場所も対象） */
+  if(!fire){
+    if(codes.some(c=>ART22_CONFIRMED.has(c))) I.push(['法第22条区域に該当します（告示で確認済み）',`${esc(cityName)}の告示は「防火地域又は準防火地域の指定のある区域を除く区域」を屋根の構造制限区域としています。屋根は不燃材料等でつくる必要があり、木造などの外壁は延焼のおそれのある部分を準防火性能にします（法第22条・第23条）。窓・玄関ドアなどの開口部に防火設備は、この区域では求められません。`]);
     else W.push(['法第22条区域に該当する可能性があります（告示を確認できていません）',`この区市の告示の本文を確認できていません。防火・準防火の指定がなくても、屋根の不燃化などが求められる場合があります。${code==='13209'?'町田市は八王子市と同じ形の指定と推測しますが、告示は確認できていません。':''}市区の建築指導課で確認してください。`]);
   }
-  if(fire===25 && SHIN_BOUKA.has(code)) W.push(['「新たな防火規制」の区域にあたる可能性があります',`${esc(cityName)}には、東京都建築安全条例第7条の3による指定区域があります。指定区域内の準防火地域では、原則すべての建築物を準耐火建築物以上とし、延べ面積500㎡超は耐火建築物等とする必要があります。区域は町丁目ごとに指定されています。都の区域図で必ず確認してください：<a href="${SHIN_BOUKA_URL}" target="_blank" rel="noopener">新たな防火規制の指定区域図（都市整備局）</a>`]);
+  if(fire===25 && codes.some(c=>SHIN_BOUKA.has(c))) W.push(['「新たな防火規制」の区域にあたる可能性があります',`${esc(cityName)}には、東京都建築安全条例第7条の3による指定区域があります。指定区域内の準防火地域では、原則すべての建築物を準耐火建築物以上とし、延べ面積500㎡超は耐火建築物等とする必要があります。区域は町丁目ごとに指定されています。都の区域図で必ず確認してください：<a href="${SHIN_BOUKA_URL}" target="_blank" rel="noopener">新たな防火規制の指定区域図（都市整備局）</a>`]);
   h += I.map(w=>`<div class="info"><b>${w[0]}</b>${w[1]}</div>`).join('') + W.map(w=>`<div class="warn"><b>${w[0]}</b>${w[1]}</div>`).join('');
 
   /* 営業向け目安 */
   h += `<div class="note">`;
-  if(fire===24) h+=`<h3>営業での目安（防火地域）</h3><ul><li>延焼のおそれのある部分（隣地境界線・道路中心線から、1階は3m以下、2階以上は5m以下）の窓・玄関ドアなどは、防火設備（認定品）が必要になります。</li><li>階数が3以上、または延べ面積が100㎡を超える建築物は、耐火建築物とする必要があります。</li><li>増築は10㎡以内でも確認申請が必要です。</li></ul>`;
-  else if(fire===25) h+=`<h3>営業での目安（準防火地域）</h3><ul><li>延焼のおそれのある部分（隣地境界線・道路中心線から、1階は3m以下、2階以上は5m以下）の窓・玄関ドアなどは、防火設備（認定品）が必要になります。</li><li>外壁・軒裏は、防火構造などの性能が必要です。規模によって準耐火建築物・耐火建築物が必要になります。</li><li>増築は10㎡以内でも確認申請が必要です。</li></ul>`;
+  if(fire===24) h+=`<h3>営業での目安（防火地域）</h3><ul><li>延焼のおそれのある部分（隣地境界線・道路中心線から、1階は3m以下、2階以上は5m以下）の窓・玄関ドアなどは、防火設備（認定品）が必要になります。</li><li>階数が3以上、または延べ面積が100㎡を超える建築物は、耐火建築物等とする必要があります。階数2以下で100㎡以下の建築物でも、準耐火建築物等以上が必要です。</li><li>増築は10㎡以内でも確認申請が必要です。</li></ul>`;
+  else if(fire===25) h+=`<h3>営業での目安（準防火地域）</h3><ul><li>延焼のおそれのある部分（隣地境界線・道路中心線から、1階は3m以下、2階以上は5m以下）の窓・玄関ドアなどは、防火設備（認定品）が必要になります。</li><li>延焼のおそれのある部分の外壁・軒裏は、防火構造などの性能が必要です。規模によって準耐火建築物等・耐火建築物等が必要になります。</li><li>増築は10㎡以内でも確認申請が必要です。</li></ul>`;
   else h+=`<h3>営業での目安</h3><ul><li>防火・準防火地域ではありません。上の22条区域の表示を併せて確認してください。</li></ul>`;
   h += `<h3>建蔽率・容積率について</h3><ul><li>表示は都市計画で指定された数値です。角地、防火地域内の耐火建築物等、準防火地域内の準耐火建築物等などで、建蔽率が緩和されることがあります。</li><li>容積率は、前面道路の幅が12m未満だと低くなる場合があります。</li></ul>
     <h3>最終確認</h3><ul><li>市区町村の都市計画窓口、または都市計画図で確認してください。データの基準は国土数値情報（令和6年度版）で、最新の都市計画変更が反映されていない場合があります。</li></ul></div>
     <div class="row2"><button class="sub" id="copy">営業メモをコピー</button></div>`;
   $('result').innerHTML = h;
 
-  const memo = [`【${title||heading}】`,`防火地域の区分：${label}`,
+  const memo = [`【${title||heading}】`,`位置：${lat.toFixed(6)}, ${lon.toFixed(6)}（https://maps.gsi.go.jp/#17/${lat.toFixed(6)}/${lon.toFixed(6)}/）`,`防火地域の区分：${label}${unsure}`,
     youto.length?`用途地域：${youto[0].p.n}／建蔽率${youto[0].p.bcr}%／容積率${youto[0].p.far}%`:'用途地域：指定なし',
     heights.length?`高度地区：指定あり`:'',
     ...I.map(w=>`※${w[0].replace(/<[^>]*>/g,'')}`), ...W.map(w=>`※${w[0].replace(/<[^>]*>/g,'')}`),'（国土数値情報 都市計画決定情報 令和6年度版・参考情報）'].filter(Boolean).join('\n');
@@ -445,7 +465,15 @@ async function search(){
       if(!list.some(c=>c.title.startsWith('東京都'))){ usedPlain=true; list=(await geocode(plain)).filter(ok); }
     }
     if(my!==searchSeq) return;
-    const tokyo=list.filter(c=>c.title.startsWith('東京都'));
+    let tokyo=list.filter(c=>c.title.startsWith('東京都'));
+    /* 番地まで入力しているのに、市区名そのものにだけ一致した候補（例：「中町1-1」→中央区）は外す */
+    if(numRuns(plain).length){
+      const detailed=tokyo.filter(c=>!isCityOnly(c.title)); if(detailed.length) tokyo=detailed;
+      else if(tokyo.length){   // 市区名にしか一致しない＝町名・番地が見つかっていない
+        $('cands').innerHTML=''; setMsg('町名・番地が見つかりませんでした。市区町村名から入れてお試しください（例：三鷹市下連雀3-1-1）。',true);
+        showWait('判定できない理由','町名・番地が見つかりませんでした'); return;
+      }
+    }
     if(!tokyo.length){
       $('cands').innerHTML='';
       if(list.length || (hasPref(plain)&&!plain.startsWith('東京都'))){
@@ -474,6 +502,7 @@ $('loc').onclick=()=>{
   if(!navigator.geolocation){ setMsg('この端末では現在地を取得できません。',true); return; }
   setMsg('現在地を取得中…');
   navigator.geolocation.getCurrentPosition(async p=>{
+    cancelSearch();
     setMsg('現在地で判定しました。位置がずれている場合はピンを動かしてください。');
     placePin(p.coords.latitude,p.coords.longitude,true);
     await judge(p.coords.latitude,p.coords.longitude,'現在地','exact',{accuracy:p.coords.accuracy});
