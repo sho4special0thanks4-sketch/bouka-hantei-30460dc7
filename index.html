@@ -9,7 +9,7 @@
 <style>
 :root{
   --bg:#f4f6f8; --card:#fff; --text:#1d2733; --sub:#5b6773; --line:#dde3e9;
-  --fire:#c62828; --quasi:#e65100; --none:#455a64; --accent:#00695c; --warn-bg:#fff4e0; --warn-line:#f0b45a;
+  --fire:#c62828; --quasi:#6a1b9a; --none:#455a64; --accent:#00695c; --warn-bg:#fff4e0; --warn-line:#f0b45a; --info-bg:#e8f1fb; --info-line:#8fb4e0;
 }
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,BlinkMacSystemFont,"Hiragino Sans","Hiragino Kaku Gothic ProN",Meiryo,sans-serif;font-size:16px;line-height:1.6}
@@ -21,26 +21,28 @@ main{max-width:1100px;margin:0 auto;padding:12px 16px 40px;display:grid;gap:12px
 .card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px}
 .searchrow{display:flex;gap:8px}
 .searchrow input{flex:1;min-width:0;font-size:16px;padding:12px;border:1px solid #b9c4ce;border-radius:10px}
-button{font:inherit;border:0;border-radius:10px;padding:12px 14px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}
+button{font:inherit;border:0;border-radius:10px;padding:12px 14px;min-height:44px;background:var(--accent);color:#fff;font-weight:700;cursor:pointer}
 button.sub{background:#eef2f5;color:var(--text);border:1px solid var(--line);font-weight:600}
 button:disabled{opacity:.5}
 .row2{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
 .hint{font-size:12px;color:var(--sub);margin:6px 0 0}
 #cands{list-style:none;margin:8px 0 0;padding:0;display:grid;gap:6px}
-#cands li{border:1px solid var(--line);border-radius:10px;padding:10px 12px;cursor:pointer;background:#fafcfd}
+#cands li{border:1px solid var(--line);border-radius:10px;padding:12px;cursor:pointer;background:#fafcfd;min-height:44px}
 #cands li[aria-selected="true"]{border-color:var(--accent);background:#e6f4f1}
 #map{height:46vh;min-height:300px;border-radius:12px;border:1px solid var(--line)}
 @media(min-width:900px){#map{height:60vh}}
 .badge{display:block;border-radius:12px;color:#fff;padding:14px 16px}
 .badge .k{display:block;font-size:12px;opacity:.9}
 .badge .v{display:block;font-size:26px;font-weight:800;line-height:1.3}
-.badge.fire{background:var(--fire)}.badge.quasi{background:var(--quasi)}.badge.none{background:var(--none)}.badge.wait{background:#90a4ae}
+.badge.fire{background:var(--fire)}.badge.quasi{background:var(--quasi)}.badge.none{background:var(--none)}.badge.wait{background:#78909c}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
 .cell{border:1px solid var(--line);border-radius:10px;padding:8px 10px;background:#fafcfd}
 .cell .k{font-size:12px;color:var(--sub)}.cell .v{font-size:20px;font-weight:800}
 .cell.wide{grid-column:1/3}.cell.wide .v{font-size:17px}
-.warn{background:var(--warn-bg);border:1px solid var(--warn-line);border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px}
-.warn b{display:block;margin-bottom:2px}
+.warn,.info{border-radius:10px;padding:10px 12px;margin-top:10px;font-size:14px}
+.warn{background:var(--warn-bg);border:1px solid var(--warn-line)}
+.info{background:var(--info-bg);border:1px solid var(--info-line)}
+.warn b,.info b{display:block;margin-bottom:2px}
 .note{font-size:13px;color:var(--sub);margin-top:10px}
 .note h3{font-size:13px;margin:10px 0 2px;color:var(--text)}
 .note ul{margin:0;padding-left:1.2em}
@@ -50,13 +52,14 @@ button:disabled{opacity:.5}
 .pin{width:26px;height:26px;border-radius:50% 50% 50% 0;background:#1565c0;border:3px solid #fff;box-shadow:0 1px 6px rgba(0,0,0,.5);transform:rotate(-45deg)}
 #msg{font-size:14px;margin-top:8px}
 #msg.err{color:#b71c1c}
+a{color:#0b57a4}
 footer{font-size:11px;color:var(--sub);padding:0 16px 30px;max-width:1100px;margin:0 auto}
 </style>
 </head>
 <body>
 <header>
   <h1>防火地域かんたん判定（東京都）</h1>
-  <p>住所を入れるだけで、防火地域・準防火地域・用途地域・建蔽率・容積率を表示</p>
+  <p>住所を入れるだけで、防火地域・準防火地域・22条区域・用途地域・建蔽率・容積率を表示</p>
 </header>
 <main>
   <section class="card left">
@@ -78,13 +81,13 @@ footer{font-size:11px;color:var(--sub);padding:0 16px 30px;max-width:1100px;marg
     <div id="map"></div>
     <div class="legend">
       <span><i style="background:#c62828"></i>防火地域</span>
-      <span><i style="background:#ef6c00"></i>準防火地域</span>
+      <span><i style="background:#7b1fa2"></i>準防火地域</span>
       <span>（地図右上の切替で、用途地域・航空写真も表示できます）</span>
     </div>
   </section>
 </main>
 <footer>
-  出典：国土数値情報「都市計画決定情報」令和6年度版（国土交通省・CC BY 4.0）／住所の位置：国土地理院 住所検索API／地図：国土地理院タイル。
+  出典：国土数値情報「都市計画決定情報」令和6年度版（国土交通省・CC BY 4.0）／住所の位置・市区町村の判別：国土地理院 住所検索API・逆ジオコーダ／地図：国土地理院タイル。
   本ツールの結果は参考情報です。契約・確認申請の前には、必ず市区町村の都市計画窓口または都市計画図で最終確認してください。
 </footer>
 
@@ -95,15 +98,26 @@ footer{font-size:11px;color:var(--sub);padding:0 16px 30px;max-width:1100px;marg
 const FIRE_LABEL = {24:'防火地域', 25:'準防火地域'};
 const YOUTO_COLOR = {1:'#2e7d32',2:'#43a047',3:'#7cb342',4:'#9ccc65',5:'#fdd835',6:'#fbc02d',7:'#ffa000',8:'#f48fb1',9:'#e53935',10:'#ab47bc',11:'#7e57c2',12:'#5c6bc0'};
 const TOKYO_CENTER = [35.68, 139.7];
+/* 建築基準法第22条区域：「防火地域又は準防火地域の指定のある区域を除く区域」と告示で確認できた市区町村（市区町村コード）
+   都告示第354号：昭島・青梅・小金井・東村山・国立・福生・狛江・東大和・清瀬・東久留米・武蔵村山・多摩・稲城・羽村・あきる野・瑞穂・日の出
+   市区の公式ページで確認：八王子・日野・練馬 */
+const ART22_CONFIRMED = new Set(['13207','13205','13210','13213','13215','13218','13219','13220','13221','13222','13223','13224','13225','13227','13228','13303','13305','13201','13212','13120']);
+/* 東京都建築安全条例第7条の3「新たな防火規制」の指定区域がある区市（19区＋三鷹市） */
+const SHIN_BOUKA = new Set(['13104','13105','13106','13107','13108','13109','13110','13111','13112','13113','13114','13115','13116','13117','13118','13119','13120','13121','13123','13204']);
+const SHIN_BOUKA_URL = 'https://www.toshiseibi.metro.tokyo.lg.jp/bosai/mokuzou_seibi/bouka/anzen_kuikizu';
+const EXTRA_MUNI = ['奥多摩町','檜原村','大島町','利島村','新島村','神津島村','三宅村','御蔵島村','八丈町','青ヶ島村','小笠原村'];
 
 /* ========== データ読み込み ========== */
-let INDEX = null;
-const cityCache = {};   // code -> {fire:[], youto:[], height:[], fuuchi:[]}
+let INDEX = null, INDEX_NAME = {};
+const cityPromise = {};   // code -> Promise
+const cityData = {};      // code -> {fire,youto,height,fuuchi,chiku}
 const loaded = new Set();
 
 async function loadIndex(){
   if(INDEX) return INDEX;
-  const r = await fetch('data/index.json'); INDEX = await r.json(); return INDEX;
+  const r = await fetch('data/index.json'); INDEX = await r.json();
+  INDEX.forEach(c=>INDEX_NAME[c.code]=c.name);
+  return INDEX;
 }
 function prep(items){
   return (items||[]).map(it=>{
@@ -113,13 +127,17 @@ function prep(items){
     return {p:it.p, polys, bb:b, gj:it.g};
   });
 }
-async function loadCity(code){
-  if(cityCache[code]) return cityCache[code];
-  const r = await fetch(`data/${code}.json`);
-  if(!r.ok) throw new Error('データ読み込み失敗 '+code);
-  const d = await r.json();
-  cityCache[code] = {fire:prep(d.fire), youto:prep(d.youto), height:prep(d.height), fuuchi:prep(d.fuuchi)};
-  return cityCache[code];
+function loadCity(code){
+  if(!cityPromise[code]){
+    cityPromise[code] = fetch(`data/${code}.json`).then(r=>{
+      if(!r.ok) throw new Error('データ読み込み失敗 '+code);
+      return r.json();
+    }).then(d=>{
+      cityData[code] = {fire:prep(d.fire), youto:prep(d.youto), height:prep(d.height), fuuchi:prep(d.fuuchi), chiku:prep(d.chiku)};
+      return cityData[code];
+    }).catch(e=>{ delete cityPromise[code]; throw e; });
+  }
+  return cityPromise[code];
 }
 const M = 0.002; // 約200m。市区町村境をまたぐ場合に隣の市も読む
 async function ensureCitiesFor(lat,lon){
@@ -129,7 +147,7 @@ async function ensureCitiesFor(lat,lon){
   need.forEach(c=>loaded.add(c.code));
   return need;
 }
-function allFeatures(layer){ let a=[]; for(const c of loaded) a=a.concat(cityCache[c][layer]); return a; }
+function allFeatures(layer){ let a=[]; for(const c of loaded) a=a.concat(cityData[c][layer]); return a; }
 
 /* ========== 幾何 ========== */
 function inRing(x,y,ring){
@@ -182,11 +200,15 @@ function nearbyEdges(layer, lon, lat, R){
 function nearestChange(layer, lon, lat, R, keyAt){
   const me = keyAt(lon,lat);
   for(const e of nearbyEdges(layer,lon,lat,R).slice(0,60)){
-    const dd = e.d<0.5 ? 1 : e.d;
-    const ux = e.d<0.5 ? 1 : e.cx/dd, uy = e.d<0.5 ? 0 : e.cy/dd;
-    const qx = e.cx+ux*3, qy = e.cy+uy*3;      // 境界の3m向こう
-    const qlon = lon+qx/e.kx, qlat = lat+qy/e.ky;
-    const other = keyAt(qlon,qlat);
+    if(e.d<0.5){                       // ほぼ境界の上：四方3mを調べ、自分と違う側があれば境界と判断
+      for(const [ux,uy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+        const other = keyAt(lon+ux*3/e.kx, lat+uy*3/e.ky);
+        if(other!==me) return {dist:e.d, other};
+      }
+      continue;
+    }
+    const ux=e.cx/e.d, uy=e.cy/e.d;
+    const other = keyAt(lon+(e.cx+ux*3)/e.kx, lat+(e.cy+uy*3)/e.ky);   // 境界の3m向こう
     if(other!==me) return {dist:e.d, other};
   }
   return null;
@@ -197,7 +219,6 @@ function cleanAddr(s){
   return s.trim().replace(/[\s　]+/g,'').replace(/[ー−‐－―]/g,'-').replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
 }
 function hasPref(s){ return /^(東京都|北海道|京都府|大阪府|.{2,3}県)/.test(s); }
-function normalizeAddr(s){ s=cleanAddr(s); return hasPref(s)?s:'東京都'+s; }
 /* 住所検索が「東京都」「神奈川県」だけを返したときは、場所を特定できていない（代表点で判定すると誤答になる） */
 function isPrefOnly(t){ return /^(東京都|北海道|京都府|大阪府|.{2,3}県)$/.test(t); }
 async function geocode(q){
@@ -206,9 +227,41 @@ async function geocode(q){
   const a = await r.json();
   return a.map(x=>({title:x.properties.title, lon:x.geometry.coordinates[0], lat:x.geometry.coordinates[1]}));
 }
+/* 緯度経度 → 市区町村コード（都外・都内の判別、市区町村名） */
+async function reverseGeo(lat,lon){
+  try{
+    const r = await fetch(`https://mreversegeocoder.gsi.go.jp/reverse-geocoder/LonLatToAddress?lon=${lon}&lat=${lat}`);
+    if(!r.ok) return null;
+    const j = await r.json();
+    return j.results || null;
+  }catch(e){ return null; }
+}
+const KANJI = {'〇':0,'一':1,'二':2,'三':3,'四':4,'五':5,'六':6,'七':7,'八':8,'九':9};
+function kanjiNum(s){
+  if(s==='十') return 10;
+  if(s.length===1) return KANJI[s];
+  if(s.length===2 && s[0]==='十') return 10+KANJI[s[1]];
+  if(s.length===2 && s[1]==='十') return KANJI[s[0]]*10;
+  if(s.length===3 && s[1]==='十') return KANJI[s[0]]*10+KANJI[s[2]];
+  return NaN;
+}
+/* 住所文字列から、丁目・番地・号の数字の並びを取り出す（入力と検索結果を比べ、番地の一部が落ちていないか見るため） */
+function numRuns(s){
+  s = s.replace(/[０-９]/g,c=>String.fromCharCode(c.charCodeAt(0)-0xFEE0));
+  s = s.replace(/([一二三四五六七八九十〇]+)丁目/g,(m,a)=>{ const n=kanjiNum(a); return isNaN(n)?m:n+'丁目'; });
+  return s.match(/\d+/g) || [];
+}
+function isCityOnly(t){
+  t = t.replace(/^東京都/,'');
+  return Object.values(INDEX_NAME).includes(t) || EXTRA_MUNI.includes(t);
+}
+/* 位置の精度：city=市区町村の代表点／low=町名の代表点／mid=丁目の代表点／block=番地・街区の代表点／exact=号まで特定 */
 function precisionOf(title){
-  if(/[番号]/.test(title) || (/[0-9０-９]$/.test(title) && !/丁目$/.test(title))) return 'high';
-  if(/丁目$/.test(title)) return 'mid';
+  const t = title.replace(/^東京都/,'');
+  if(isCityOnly(t)) return 'city';
+  if(/丁目$/.test(t)) return 'mid';
+  if(/[0-9０-９]+号$/.test(t)) return 'exact';
+  if(/[0-9０-９]+番地?$/.test(t) || /[0-9０-９]$/.test(t)) return 'block';
   return 'low';
 }
 
@@ -221,31 +274,30 @@ const fireLayer = L.layerGroup().addTo(map);
 const youtoLayer = L.layerGroup();
 L.control.layers({'地図':std,'航空写真':photo},{'防火・準防火地域':fireLayer,'用途地域':youtoLayer},{collapsed:true}).addTo(map);
 const pinIcon = L.divIcon({className:'',html:'<div class="pin"></div>',iconSize:[26,26],iconAnchor:[4,26]});
-let marker=null, current=null;
+let marker=null;
 const drawn = new Set();
 
 function geo(f){ return {type:'Feature',properties:f.p,geometry:{type:f.gj.t==='P'?'Polygon':'MultiPolygon',coordinates:f.gj.c}}; }
 function drawOverlays(){
   for(const code of loaded){
     if(drawn.has(code)) continue; drawn.add(code);
-    const c = cityCache[code];
-    const fireFs = c.fire.map(geo);
-    L.geoJSON({type:'FeatureCollection',features:fireFs},{
-      style:f=>({color:f.properties.c===24?'#b71c1c':'#e65100',weight:1,fillColor:f.properties.c===24?'#c62828':'#ef6c00',fillOpacity:.38}),
+    const c = cityData[code];
+    L.geoJSON({type:'FeatureCollection',features:c.fire.map(geo)},{
+      style:f=>({color:f.properties.c===24?'#b71c1c':'#4a148c',weight:1,fillColor:f.properties.c===24?'#c62828':'#7b1fa2',fillOpacity:.4}),
       interactive:false}).addTo(fireLayer);
     L.geoJSON({type:'FeatureCollection',features:c.youto.map(geo)},{
       style:f=>({color:'#37474f',weight:.6,fillColor:YOUTO_COLOR[f.properties.c]||'#999',fillOpacity:.45}),
       onEachFeature:(f,l)=>l.bindTooltip(`${f.properties.n}　建蔽率${f.properties.bcr}%／容積率${f.properties.far}%`,{sticky:true})}).addTo(youtoLayer);
   }
 }
-async function placePin(lat,lon,fit){
+function placePin(lat,lon,fit){
   if(!marker){
     marker=L.marker([lat,lon],{draggable:true,icon:pinIcon}).addTo(map);
-    marker.on('dragend',()=>{const p=marker.getLatLng(); judge(p.lat,p.lng,current&&current.title?current.title:null,'moved');});
+    marker.on('dragend',()=>{ const p=marker.getLatLng(); judge(p.lat,p.lng,null,'exact'); });
   } else marker.setLatLng([lat,lon]);
   if(fit) map.setView([lat,lon],Math.max(map.getZoom(),17));
 }
-map.on('click',e=>{ placePin(e.latlng.lat,e.latlng.lng,false); judge(e.latlng.lat,e.latlng.lng,current&&current.title?current.title:null,'moved'); });
+map.on('click',e=>{ placePin(e.latlng.lat,e.latlng.lng,false); judge(e.latlng.lat,e.latlng.lng,null,'exact'); });
 map.on('moveend',async()=>{
   if(map.getZoom()<13) return;
   const c=map.getCenter(); try{ await ensureCitiesFor(c.lat,c.lng); drawOverlays(); }catch(e){}
@@ -253,37 +305,61 @@ map.on('moveend',async()=>{
 
 /* ========== 判定と表示 ========== */
 const $ = id=>document.getElementById(id);
-const esc = s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const esc = s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 function setMsg(t,err){ const m=$('msg'); m.textContent=t||''; m.className=err?'err':''; }
+function showWait(k,v,note){
+  $('result').innerHTML=`<div class="badge wait"><span class="k">${esc(k)}</span><span class="v">${esc(v)}</span></div>${note?`<p class="note">${note}</p>`:''}`;
+}
+let reqSeq = 0, searchSeq = 0;   // 後から始めた操作の結果だけを表示する（古い結果の上書きを防ぐ）
 
-async function judge(lat,lon,title,how,prec){
-  $('result').innerHTML='<div class="badge wait"><span class="k">判定中…</span><span class="v">データを読み込んでいます</span></div>';
-  let cities;
-  try{ cities = await ensureCitiesFor(lat,lon); }catch(e){ $('result').innerHTML='<div class="badge wait"><span class="v">データの読み込みに失敗しました</span></div>'; return; }
+/* prec: city/low/mid/block/exact、extra: {dropped, accuracy, raw} */
+async function judge(lat,lon,title,prec,extra){
+  extra = extra||{};
+  const my = ++reqSeq;
+  showWait('判定中…','データを読み込んでいます');
+  let rg, cities;
+  try{
+    [rg, cities] = await Promise.all([reverseGeo(lat,lon), ensureCitiesFor(lat,lon)]);
+  }catch(e){ if(my===reqSeq) showWait('判定できませんでした','データの読み込みに失敗しました','通信状況を確認して、もう一度お試しください。'); return; }
+  if(my!==reqSeq) return;
   drawOverlays();
-  current={lat,lon,title,prec};
-  if(prec==='low' && /[市区町村]$/.test(title||'')){
-    $('result').innerHTML=`<div class="badge wait"><span class="k">${esc(title)}</span><span class="v">番地まで入力してください</span></div>
-      <p class="note">市区町村の中心点では、防火地域などは正しく判定できません（同じ区内でも場所で変わります）。「町名＋番地」まで入れるか、地図のピンを敷地に合わせてください。</p>`;
+
+  /* 区市町村コードで都内かどうかを決める（外枠の四角では、隣県の点を都内と誤る） */
+  const code = rg && rg.muniCd ? String(rg.muniCd) : null;
+  if(code && !code.startsWith('13')){
+    showWait('判定できない理由','東京都外の場所です','いまは東京都内のみ対応しています（神奈川県などは今後追加できます）。');
     return;
   }
-  if(!cities.length){
-    $('result').innerHTML=`<div class="badge wait"><span class="k">判定できない理由</span><span class="v">東京都の都市計画区域の外です</span></div>
-      <p class="note">この位置は、いま収録している東京都の都市計画データの範囲外です（都外、または奥多摩・檜原・島しょ部など）。神奈川県などは今後追加できます。</p>`;
+  if(code && !INDEX_NAME[code]){
+    showWait('判定できない理由','データの収録範囲外です','この場所（奥多摩町・檜原村・島しょ部など）は、いま収録している都市計画データの範囲外です。市町村の窓口で確認してください。');
     return;
   }
+  if(!code && !cities.length){
+    showWait('判定できない理由','データの収録範囲外です','この位置は、収録している東京都の都市計画データの範囲外です（海上・都外など）。');
+    return;
+  }
+  if(prec==='city'){
+    showWait(title||'', '番地まで入力してください','市区町村の中心点では、防火地域などは正しく判定できません（同じ区内でも場所で変わります）。「町名＋番地」まで入れるか、地図のピンを敷地に合わせてください。');
+    return;
+  }
+
+  const cityName = code ? INDEX_NAME[code] : cities.map(c=>c.name).join('・');
+  const heading = title ? `${title}（${cityName}）` : `地図で指定した位置（${cityName}${rg&&rg.lv01Nm?rg.lv01Nm:''}付近）`;
   const fire = fireAt(lon,lat);
   const youto = youtoAt(lon,lat);
   const heights = featuresAt('height',lon,lat).map(f=>f.p);
   const fuuchi = featuresAt('fuuchi',lon,lat).map(f=>f.p.n||'風致地区');
+  const chiku = featuresAt('chiku',lon,lat).map(f=>f.p.n);
   const fireChg = nearestChange('fire',lon,lat,30,(x,y)=>fireAt(x,y)||0);
   const youtoChg = nearestChange('youto',lon,lat,30,(x,y)=>{const a=youtoAt(x,y);return a.length?youtoKey(a[0]):'-';});
 
   const cls = fire===24?'fire':fire===25?'quasi':'none';
-  const label = fire?FIRE_LABEL[fire]:'防火・準防火の指定なし';
-  const cityName = cities.map(c=>c.name).join('・');
-  let h = `<p class="addr">${esc(title||'地図上の指定位置')}（${esc(cityName)}）</p>
-    <div class="badge ${cls}"><span class="k">防火地域の区分${prec==='low'?'（町名の代表点・参考）':''}</span><span class="v">${label}</span></div>`;
+  let label = fire?FIRE_LABEL[fire]:'防火・準防火の指定なし';
+  if(!fire && youto.length){
+    label += ART22_CONFIRMED.has(code) ? '（22条区域）' : '';
+  }
+  let h = `<p class="addr">${esc(heading)}</p>
+    <div class="badge ${cls}"><span class="k">防火地域の区分${prec==='low'?'（町名の代表点・参考）':(prec==='block'&&(extra.dropped||/[0-9０-９]番地$/.test(title||'')))?'（位置が不確か・参考）':''}</span><span class="v">${esc(label)}</span></div>`;
 
   /* 用途地域 */
   if(youto.length){
@@ -296,43 +372,54 @@ async function judge(lat,lon,title,how,prec){
     if(fuuchi.length) h+=`<div class="cell wide"><div class="k">風致地区</div><div class="v">${fuuchi.map(esc).join('、')}</div></div>`;
     h += `</div>`;
   } else {
-    h += `<div class="grid"><div class="cell wide"><div class="k">用途地域</div><div class="v">用途地域の指定なし（市街化調整区域など）</div></div></div>`;
+    h += `<div class="grid"><div class="cell wide"><div class="k">用途地域</div><div class="v">用途地域の指定なし（市街化調整区域・都市計画区域外など）</div></div></div>`;
   }
 
-  /* 注意（警告） */
-  const W=[];
+  /* 注意 */
+  const W=[], I=[];
+  if(!rg) W.push(['都内かどうかを確認できませんでした','市区町村の判別に失敗したため、収録データの範囲だけで判定しています。都県境の近くでは結果が正しくない場合があります。']);
   if(prec==='mid') W.push(['住所の位置が「丁目」単位です','番地まで入力するか、地図のピンを実際の敷地に動かしてください。ピンを動かすと自動で判定し直します。']);
   if(prec==='low') W.push(['住所の位置が町名の代表点です','番地まで入力するか、ピンを実際の敷地に動かしてください。']);
+  if(prec==='block' && extra.dropped) W.push(['番地の一部まで位置を特定できませんでした','入力された番地の末尾（枝番・号など）が検索に反映されず、街区（番地）の代表点で判定しています。敷地が街区の端にある場合は結果が変わることがあります。地図のピンを敷地に合わせると確実です。']);
+  if(prec==='block' && /[0-9０-９]番地$/.test(title||'')) W.push(['地番の地域です。位置が大きくずれることがあります','地番の地域では、検索の位置が実際の建物から数十〜200m以上ずれる場合があります。必ず地図で位置を確認し、ピンを敷地に合わせてください。']);
+  if(extra.accuracy && extra.accuracy>30) W.push([`現在地の誤差が約${Math.round(extra.accuracy)}mあります`,'地図のピンを敷地に合わせてから判定結果を見てください。']);
   if(fireChg){ const o=fireChg.other?FIRE_LABEL[fireChg.other]:'指定なし';
-    W.push([`防火地域の境界が約${Math.round(fireChg.dist)}m先にあります`,`境界の向こう側は「${o}」です。敷地が境界をまたぐ場合、防火・準防火地域の規制は原則として敷地全体に及びます（建築基準法第65条）。敷地の範囲を必ず確認してください。`]); }
+    W.push([`防火地域の境界が約${Math.round(fireChg.dist)}m先にあります`,`境界の向こう側は「${o}」です。建築物が地域にまたがる場合、原則として建築物の全部に厳しい側の規制が及びます（建築基準法第65条）。敷地の範囲を必ず確認してください。`]); }
   if(youtoChg){ const [n,b,f]=String(youtoChg.other).split('|');
     W.push([`用途地域の境界が約${Math.round(youtoChg.dist)}m先にあります`, youtoChg.other==='-' ? '境界の向こう側は用途地域の指定なしです。' : `境界の向こう側は「${esc(n)}（建蔽率${esc(b)}%／容積率${esc(f)}%）」です。敷地がまたがる場合、建蔽率・容積率は面積按分になります。`]); }
-  if(!fire) W.push(['「指定なし」でも制限がある場合があります','東京都では、防火・準防火地域の外でも、建築基準法第22条区域や東京都の「新たな防火規制区域」にあたり、屋根・外壁・開口部に防火性能が必要になることが多くあります。この区域の判定はこのツールでは未対応です。']);
-  h += W.map(w=>`<div class="warn"><b>${w[0]}</b>${w[1]}</div>`).join('');
+  if(chiku.length) W.push(['地区計画の区域内です', `${chiku[0]?'「'+esc(chiku[0])+'」：':''}用途・高さ・壁面の位置などに、用途地域とは別の制限がかかる場合があります。市区の地区計画図で確認してください。`]);
+
+  /* 22条区域・新たな防火規制 */
+  if(!fire && youto.length){
+    if(ART22_CONFIRMED.has(code)) I.push(['法第22条区域に該当します（告示で確認済み）',`${esc(cityName)}の告示は「防火地域又は準防火地域の指定のある区域を除く区域」を屋根の構造制限区域としています。屋根は不燃材料等でつくる必要があり、木造などの外壁は延焼のおそれのある部分を準防火性能にします（法第22条・第23条）。窓・玄関ドアなどの開口部に防火設備は、この区域では求められません。`]);
+    else W.push(['法第22条区域に該当する可能性があります（告示を確認できていません）',`この区市の告示の本文を確認できていません。防火・準防火の指定がなくても、屋根の不燃化などが求められる場合があります。${code==='13209'?'町田市は八王子市と同じ形の指定と推測しますが、告示は確認できていません。':''}市区の建築指導課で確認してください。`]);
+  }
+  if(fire===25 && SHIN_BOUKA.has(code)) W.push(['「新たな防火規制」の区域にあたる可能性があります',`${esc(cityName)}には、東京都建築安全条例第7条の3による指定区域があります。指定区域内の準防火地域では、原則すべての建築物を準耐火建築物以上とし、延べ面積500㎡超は耐火建築物等とする必要があります。区域は町丁目ごとに指定されています。都の区域図で必ず確認してください：<a href="${SHIN_BOUKA_URL}" target="_blank" rel="noopener">新たな防火規制の指定区域図（都市整備局）</a>`]);
+  h += I.map(w=>`<div class="info"><b>${w[0]}</b>${w[1]}</div>`).join('') + W.map(w=>`<div class="warn"><b>${w[0]}</b>${w[1]}</div>`).join('');
 
   /* 営業向け目安 */
   h += `<div class="note">`;
-  if(fire===24) h+=`<h3>営業での目安（防火地域）</h3><ul><li>窓・玄関ドアなどの開口部は、防火設備（認定品）が必要になることが多い地域です。商品選定の前に確認します。</li><li>増築は10㎡以内でも確認申請が必要です。</li><li>建物の規模によっては耐火建築物とする必要があります。</li></ul>`;
-  else if(fire===25) h+=`<h3>営業での目安（準防火地域）</h3><ul><li>延焼のおそれのある部分の窓・玄関ドアは、防火設備（認定品）が必要になる場合があります。</li><li>外壁・軒裏も防火構造などの性能が必要です。</li><li>増築は10㎡以内でも確認申請が必要です。</li></ul>`;
-  else h+=`<h3>営業での目安</h3><ul><li>防火・準防火地域ではありませんが、上の注意（法22条区域・新たな防火規制）も併せて確認してください。</li></ul>`;
-  h += `<h3>建蔽率・容積率について</h3><ul><li>表示は都市計画で指定された数値です。角地や防火地域内の耐火建築物などで、建蔽率が緩和されることがあります。</li><li>容積率は、前面道路の幅が12m未満だと低くなる場合があります。</li></ul>
-    <h3>最終確認</h3><ul><li>市区町村の都市計画窓口、または都市計画図で確認してください。データの基準は国土数値情報（令和6年度版）です。</li></ul></div>
+  if(fire===24) h+=`<h3>営業での目安（防火地域）</h3><ul><li>延焼のおそれのある部分（隣地境界線・道路中心線から、1階は3m以下、2階以上は5m以下）の窓・玄関ドアなどは、防火設備（認定品）が必要になります。</li><li>階数が3以上、または延べ面積が100㎡を超える建築物は、耐火建築物とする必要があります。</li><li>増築は10㎡以内でも確認申請が必要です。</li></ul>`;
+  else if(fire===25) h+=`<h3>営業での目安（準防火地域）</h3><ul><li>延焼のおそれのある部分（隣地境界線・道路中心線から、1階は3m以下、2階以上は5m以下）の窓・玄関ドアなどは、防火設備（認定品）が必要になります。</li><li>外壁・軒裏は、防火構造などの性能が必要です。規模によって準耐火建築物・耐火建築物が必要になります。</li><li>増築は10㎡以内でも確認申請が必要です。</li></ul>`;
+  else h+=`<h3>営業での目安</h3><ul><li>防火・準防火地域ではありません。上の22条区域の表示を併せて確認してください。</li></ul>`;
+  h += `<h3>建蔽率・容積率について</h3><ul><li>表示は都市計画で指定された数値です。角地、防火地域内の耐火建築物等、準防火地域内の準耐火建築物等などで、建蔽率が緩和されることがあります。</li><li>容積率は、前面道路の幅が12m未満だと低くなる場合があります。</li></ul>
+    <h3>最終確認</h3><ul><li>市区町村の都市計画窓口、または都市計画図で確認してください。データの基準は国土数値情報（令和6年度版）で、最新の都市計画変更が反映されていない場合があります。</li></ul></div>
     <div class="row2"><button class="sub" id="copy">営業メモをコピー</button></div>`;
   $('result').innerHTML = h;
 
-  const memo = [`【${title||'指定位置'}】`,`防火地域の区分：${label}`,
+  const memo = [`【${title||heading}】`,`防火地域の区分：${label}`,
     youto.length?`用途地域：${youto[0].p.n}／建蔽率${youto[0].p.bcr}%／容積率${youto[0].p.far}%`:'用途地域：指定なし',
-    heights.length?`高度地区：${heights.map(x=>x.n||x.t).join('、')}`:'',
-    ...W.map(w=>`※${w[0]}`),'（国土数値情報 都市計画決定情報 令和6年度版・参考情報）'].filter(Boolean).join('\n');
+    heights.length?`高度地区：指定あり`:'',
+    ...I.map(w=>`※${w[0].replace(/<[^>]*>/g,'')}`), ...W.map(w=>`※${w[0].replace(/<[^>]*>/g,'')}`),'（国土数値情報 都市計画決定情報 令和6年度版・参考情報）'].filter(Boolean).join('\n');
   $('copy').onclick=async()=>{ try{ await navigator.clipboard.writeText(memo); $('copy').textContent='コピーしました'; }catch(e){ $('copy').textContent='コピーできませんでした'; } };
 }
 
 /* ========== 住所検索の操作 ========== */
-let candList=[];
+let candList=[], lastRaw='';
 function showCands(list){
   const ul=$('cands'); ul.innerHTML='';
   list.forEach((c,i)=>{
-    const li=document.createElement('li'); li.textContent=c.title; li.setAttribute('aria-selected',i===0?'true':'false');
+    const li=document.createElement('li'); li.textContent=c.title; li.setAttribute('aria-selected','false');
     li.onclick=()=>choose(i); ul.appendChild(li);
   });
 }
@@ -340,34 +427,46 @@ async function choose(i){
   const c=candList[i]; if(!c) return;
   [...$('cands').children].forEach((li,k)=>li.setAttribute('aria-selected',k===i?'true':'false'));
   const prec=precisionOf(c.title);
-  await placePin(c.lat,c.lon,true);
-  await judge(c.lat,c.lon,c.title,'search',prec);
+  const dropped = numRuns(lastRaw).length > numRuns(c.title).length;
+  placePin(c.lat,c.lon,true);
+  await judge(c.lat,c.lon,c.title,prec,{dropped});
 }
 async function search(){
-  const raw=$('q').value; if(!raw.trim()) { setMsg('住所を入力してください',true); return; }
-  setMsg('検索中…'); $('go').disabled=true;
+  const raw=$('q').value; if(!raw.trim()){ setMsg('住所を入力してください',true); return; }
+  lastRaw=cleanAddr(raw);
+  const my=++searchSeq; reqSeq++; setMsg('検索中…'); $('go').disabled=true;   // あとから入力した検索が優先される
   try{
-    const q=normalizeAddr(raw);
-    let list=(await geocode(q)).filter(c=>!isPrefOnly(c.title) && c.title.startsWith('東京都'));
-    if(!list.length){
+    await loadIndex();
+    const plain=lastRaw, ok=c=>!isPrefOnly(c.title);
+    let list, usedPlain=false;
+    if(hasPref(plain)) list=(await geocode(plain)).filter(ok);
+    else{
+      list=(await geocode('東京都'+plain)).filter(ok);
+      if(!list.some(c=>c.title.startsWith('東京都'))){ usedPlain=true; list=(await geocode(plain)).filter(ok); }
+    }
+    if(my!==searchSeq) return;
+    const tokyo=list.filter(c=>c.title.startsWith('東京都'));
+    if(!tokyo.length){
       $('cands').innerHTML='';
-      /* 東京都を付けても見つからない → 都外の住所かを調べて、理由を正しく伝える */
-      const plain=cleanAddr(raw);
-      const other=hasPref(plain)?[]:(await geocode(plain)).filter(c=>!isPrefOnly(c.title)&&!c.title.startsWith('東京都'));
-      const typedOther=hasPref(plain)&&!plain.startsWith('東京都');
-      if(other.length||typedOther){
+      if(list.length || (hasPref(plain)&&!plain.startsWith('東京都'))){
         setMsg('東京都外の住所です。いまは東京都内のみ対応しています（神奈川県などは今後追加できます）。',true);
-        $('result').innerHTML='<div class="badge wait"><span class="k">判定できない理由</span><span class="v">東京都外の住所です</span></div>';
+        showWait('判定できない理由','東京都外の住所です');
       } else {
         setMsg('その住所は見つかりませんでした。市区町村名と番地を入れてお試しください（例：町田市森野2-2-22）。',true);
-        $('result').innerHTML='<div class="badge wait"><span class="k">判定できない理由</span><span class="v">住所が見つかりませんでした</span></div>';
+        showWait('判定できない理由','住所が見つかりませんでした');
       }
       return;
     }
-    candList=list.slice(0,6); setMsg(candList.length>1?'候補が複数あります。違う場合は下の一覧から選んでください。':'');
-    showCands(candList); await choose(0);
-  }catch(e){ setMsg('検索に失敗しました：'+e.message,true); }
-  finally{ $('go').disabled=false; }
+    candList=tokyo.slice(0,6); showCands(candList);
+    if(usedPlain && candList.length>1){
+      setMsg('市区町村名がないため、場所を1つに決められません。下の候補から選んでください。');
+      showWait('候補から選んでください','市区町村名を付けると確実です');
+      return;
+    }
+    setMsg(candList.length>1?'候補が複数あります。違う場合は下の一覧から選んでください。':'');
+    await choose(0);
+  }catch(e){ if(my===searchSeq) setMsg('検索に失敗しました：'+e.message,true); }
+  finally{ if(my===searchSeq) $('go').disabled=false; }
 }
 $('go').onclick=search;
 $('q').addEventListener('keydown',e=>{ if(e.key==='Enter') search(); });
@@ -376,13 +475,10 @@ $('loc').onclick=()=>{
   setMsg('現在地を取得中…');
   navigator.geolocation.getCurrentPosition(async p=>{
     setMsg('現在地で判定しました。位置がずれている場合はピンを動かしてください。');
-    await placePin(p.coords.latitude,p.coords.longitude,true);
-    await judge(p.coords.latitude,p.coords.longitude,'現在地','gps','high');
+    placePin(p.coords.latitude,p.coords.longitude,true);
+    await judge(p.coords.latitude,p.coords.longitude,'現在地','exact',{accuracy:p.coords.accuracy});
   },err=>setMsg('現在地を取得できませんでした（位置情報の許可をご確認ください）。',true),{enableHighAccuracy:true,timeout:15000});
 };
-/* ピンを動かしたときは精度警告を外す（人が敷地に合わせたため） */
-const _judge = judge;
-judge = async function(lat,lon,title,how,prec){ return _judge(lat,lon,title,how, how==='moved'?'high':prec); };
 </script>
 </body>
 </html>
